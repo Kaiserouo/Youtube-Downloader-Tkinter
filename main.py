@@ -9,6 +9,8 @@ CHOOSE_FORMAT_OPTION = 'Use format option on the right.'
 CHOOSE_ALL_VIDEOS = 'Choose all videos.'
 PLAYLIST_SPECIAL_OPTS_N = 1
 
+TEST_URL = 'https://www.youtube.com/watch?v=BaW_jenozKc'
+
 class URLFrame(tk.Frame):
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
@@ -150,7 +152,7 @@ class SettingFrame(tk.Frame):
         self.label_folder['text'] = 'Folder: ' + self.folder
     def registerFmtBtnCmd(self, func):
         self.btn_fmt['command'] = func
-
+        
 class DownloadFrame(tk.Frame):
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
@@ -286,6 +288,9 @@ class MainFrame(tk.Frame):
         ydl_opts = self.settingfrm.getDownloadSpecificOptions()
         ydl_opts.update(self.settingfrm.getFormatOptions())
 
+        if self.tryToGetInfo(ydl_opts, TEST_URL)[0]:
+            raise Exception('Something went wrong with setting!')
+
         thr = threading.Thread(
             target=self.threadDownloadVideo, args=[ydl_opts, url_ls]
         )
@@ -302,6 +307,9 @@ class MainFrame(tk.Frame):
             ydl_opts.update(self.settingfrm.getFormatOptions())
         else:
             ydl_opts.update({'format': str(fmt_num)})
+
+        if self.tryToGetInfo(ydl_opts, TEST_URL)[0]:
+            raise Exception('Something went wrong with setting!')
         
         thr = threading.Thread(
             target=self.threadDownloadVideo, args=[ydl_opts, [self.cur_url]]
@@ -310,9 +318,12 @@ class MainFrame(tk.Frame):
         thr.start()
     
     def threadDownloadVideo(self, ydl_opts, url_ls):
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download(url_ls)
-        self.dlfrm.changeInfoLabel('Download success!')
+        try:
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                ydl.download(url_ls)
+            self.dlfrm.changeInfoLabel('Download success!')
+        except Exception as e:
+            self.dlfrm.changeInfoLabel('Download went wrong...!\n' + str(e))
         
 
 root = tk.Tk()
