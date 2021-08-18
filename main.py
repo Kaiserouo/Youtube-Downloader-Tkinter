@@ -110,6 +110,36 @@ class SettingFrame(tk.Frame):
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
         self.grid()
+        self.setting_subframe = []
+        self.createWidgets()
+
+    def createWidgets(self):
+        self.formatfrm = SettingFormatSubframe(self)
+        self.addSubframe(self.formatfrm)
+
+        self.fnamefrm = SettingFilenameSubframe(self)
+        self.addSubframe(self.fnamefrm)
+
+    def addSubframe(self, subframe):
+        subframe.grid(column=0, row=len(self.setting_subframe))
+        self.setting_subframe.append(subframe)
+        
+    def getFormatOptions(self):
+        d = dict()
+        for subframe in self.setting_subframe:
+            d.update(subframe.getFormatOptions())
+        return d
+
+    def getDownloadSpecificOptions(self):
+        d = dict()
+        for subframe in self.setting_subframe:
+            d.update(subframe.getDownloadSpecificOptions())
+        return d
+
+class SettingFormatSubframe(tk.Frame):
+    def __init__(self, master=None):
+        tk.Frame.__init__(self, master)
+        self.grid()
         self.createWidgets()
     def createWidgets(self):
         font_normal = fnt.Font(size=12)
@@ -117,42 +147,46 @@ class SettingFrame(tk.Frame):
         self.label_fmt.grid(column=0, row=0, sticky=tk.W)
         self.entry_fmt = tk.Entry(self, font=font_normal)
         self.entry_fmt.grid(column=1, row=0, sticky=tk.W, ipady=5, ipadx=150, padx=10)
-
-        self.label_fname = tk.Label(self, text='Filename:', font=font_normal)
-        self.label_fname.grid(column=0, row=1, sticky=tk.W)
-        self.entry_fname = tk.Entry(self, font=font_normal)
-        self.entry_fname.grid(column=1, row=1, sticky=tk.W, ipady=5, ipadx=150, padx=10)
-        self.entry_fname.insert(0, '%(title)s-%(id)s.%(ext)s')
-
-        self.folderfrm = tk.Frame(self)
-        self.folderfrm.grid(column=0, row=2, columnspan=2, sticky=tk.W)
-        self.label_folder = tk.Label(self.folderfrm, text='Folder:', font=font_normal)
-        self.label_folder.grid(column=0, row=0, sticky=tk.E)
-        self.btn_folder = tk.Button(self.folderfrm, text='Choose', command=self.onClickBtnFolder)
-        self.btn_folder.grid(column=1, row=0, sticky=tk.W, padx=50)
-        self.folder = ''
-
     def getFormatOptions(self):
         d = dict()
         if self.entry_fmt.get() != '':
             d.update({'format': self.entry_fmt.get()})
         return d
+    def getDownloadSpecificOptions(self):
+        return dict()
 
+class SettingFilenameSubframe(tk.Frame):
+    def __init__(self, master=None):
+        tk.Frame.__init__(self, master)
+        self.grid()
+        self.createWidgets()
+    def createWidgets(self):
+        font_normal = fnt.Font(size=12)
+        self.label_fname = tk.Label(self, text='Filename:', font=font_normal)
+        self.label_fname.grid(column=0, row=0, sticky=tk.W)
+        self.entry_fname = tk.Entry(self, font=font_normal)
+        self.entry_fname.grid(column=1, row=0, sticky=tk.W, ipady=5, ipadx=150, padx=10)
+        self.entry_fname.insert(0, '%(title)s-%(id)s.%(ext)s')
+
+        self.folderfrm = tk.Frame(self)
+        self.folderfrm.grid(column=0, row=1, columnspan=2, sticky=tk.W)
+        self.label_folder = tk.Label(self.folderfrm, text='Folder:', font=font_normal)
+        self.label_folder.grid(column=0, row=0, sticky=tk.E)
+        self.btn_folder = tk.Button(self.folderfrm, text='Choose', command=self.onClickBtnFolder)
+        self.btn_folder.grid(column=1, row=0, sticky=tk.W, padx=50)
+        self.folder = ''
+    def onClickBtnFolder(self):
+        self.folder = filedialog.askdirectory()
+        self.label_folder['text'] = 'Folder: ' + self.folder
+    def getFormatOptions(self):
+        return dict()
     def getDownloadSpecificOptions(self):
         if self.folder == '':
             raise Exception('Need to choose folder!')
         if self.entry_fname.get() == '':
             raise Exception('Need to have nonempty filename!')
-        return {
-            'outtmpl': f'{self.folder}/{self.entry_fname.get()}'
-        }
-        
-    def onClickBtnFolder(self):
-        self.folder = filedialog.askdirectory()
-        self.label_folder['text'] = 'Folder: ' + self.folder
-    def registerFmtBtnCmd(self, func):
-        self.btn_fmt['command'] = func
-        
+        return {'outtmpl': f'{self.folder}/{self.entry_fname.get()}'}
+
 class DownloadFrame(tk.Frame):
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
@@ -288,7 +322,7 @@ class MainFrame(tk.Frame):
         ydl_opts = self.settingfrm.getDownloadSpecificOptions()
         ydl_opts.update(self.settingfrm.getFormatOptions())
 
-        if self.tryToGetInfo(ydl_opts, TEST_URL)[0]:
+        if not self.tryToGetInfo(ydl_opts, TEST_URL)[0]:
             raise Exception('Something went wrong with setting!')
 
         thr = threading.Thread(
@@ -308,7 +342,7 @@ class MainFrame(tk.Frame):
         else:
             ydl_opts.update({'format': str(fmt_num)})
 
-        if self.tryToGetInfo(ydl_opts, TEST_URL)[0]:
+        if not self.tryToGetInfo(ydl_opts, TEST_URL)[0]:
             raise Exception('Something went wrong with setting!')
         
         thr = threading.Thread(
